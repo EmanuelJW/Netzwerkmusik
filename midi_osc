@@ -1,0 +1,87 @@
+// -------------------------
+
+
+// Netz-Adresse setzen zum verschicken der OSC-Nachrichten an Remote-Nutzer --> über OSCjunction
+
+// Zwei Nutzer haben jeweils eine eigene Junction mit unterschiedlichen
+// Ports an die sie schicken.
+//
+// z.B Nutzer 1: "57140", Nutzer 2: "57150"
+
+
+n = NetAddr("127.0.0.1", 57140);
+
+
+// -------------------------
+
+
+MIDIClient.init;  // MIDI Client initialisieren
+
+MIDIClient.sources;  // Gibt vorhandene MIDI-Sources als Array an
+                     // --> [Source 1, Source 2, ...]
+
+MIDIClient.destinations;  // Gibt vorhandene MIDI-Destinations als Array an
+                          // --> [Desntination 1, Desntination 2, ...]
+
+MIDIIn.connect(0, MIDIClient.sources[1]);  // Mit einer MIDI-Source verbinden um eingehende
+                                           // MIDI-Nachrichten von lokaler Software (MAX) für
+                                           // die Weiterleitung an Remote-Nutzer über OSC abzugreifen.
+                                           //
+                                           // Hier einen anderern MIDI-Port verwenden als zum
+                                           // verschicken der Nachrichten an lokale Software (MAX).
+                                           //
+                                           // "IAC-Treiber Bus 2"
+
+
+m = MIDIOut(0);  // MIDI-Destination setzen um extern über OSC
+                 // empfangene MIDI-Nachrichten an lokale
+                 // Software (MAX) weiterzulieten.
+                 //
+                 // "IAC-Treiber Bus 1"
+
+
+// -------------------------
+
+
+// MIDIFuncs oder MIDIdefs definieren zum Empfangen von MIDI-Nachrichten
+// von lokaler Software (MAX) und über OSCjunction an Remote-Nutzer verschicken.
+
+(
+var on, off;
+​
+on = MIDIFunc.noteOn({ |veloc, num, chan, src|
+	n.sendMsg("/noteOn", num, veloc);  // MIDI-nachricht an OSCjunction schicken
+});
+​
+off = MIDIFunc.noteOff({ |veloc, num, chan, src|
+	n.sendMsg("/noteOff", num, veloc);  // MIDI-nachricht an OSCjunction schicken
+});
+​
+q = { on.free; off.free; };
+)
+
+q.value;  // zum Schliessen der MIDI-Responder
+
+
+// -------------------------
+
+
+// OSCdefs definieren zum Empfangen von MIDI-Nachrichten von Remote-Nutzer
+// über OSCjunction und weiterleiten an lokale Software (MAX)
+
+(
+OSCdef(\noteOnResponder, { |msg|
+	msg.postln;
+	m.noteOn(0, msg[1], msg[2]);  // MIDI-Nachricht an lokale Software schicken
+}, '/noteOn');
+)
+
+(
+OSCdef(\noteOffResponder, { |msg|
+	msg.postln;
+	m.noteOn(0, msg[1], msg[2]);  // MIDI-Nachricht an lokale Software schicken
+}, '/noteOff');
+)
+
+
+// -------------------------
