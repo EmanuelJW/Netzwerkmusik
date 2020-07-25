@@ -1,0 +1,40 @@
+MIDIdef
+MIDIFunc
+NetAddr.langPort
+
+
+m = MIDIOut.newByName("IAC Driver", "Bus 1");
+
+m.noteOn(0, 60, 64);
+m.noteOff(0, 60, 64);
+
+n = NetAddr("127.0.0.1", 57140);
+
+n.sendMsg("/andres","hey"); //
+
+(
+OSCdef(\recieve, { |msg|
+	msg[1].postln;
+}, '/andres')
+)
+
+(
+var notes, on, off;
+
+MIDIClient.init;
+MIDIIn.connectAll;
+
+notes = Array.newClear(128);
+on = MIDIFunc.noteOn({ |veloc, num, chan, src|
+    notes[num] = Synth(\default, [\freq, num.midicps,
+        \amp, veloc * 0.00315]);
+});
+
+off = MIDIFunc.noteOff({ |veloc, num, chan, src|
+    notes[num].release;
+});
+
+q = { on.free; off.free; };
+)
+
+q.value;
